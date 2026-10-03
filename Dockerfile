@@ -4,7 +4,9 @@
 # Run as host user: docker run -p 3000:3000 -v ./data:/app/storage --user "$(id -u):$(id -g)" tracefinity
 # NAS (Unraid/TrueNAS): docker run -p 3000:3000 -e PUID=99 -e PGID=100 -v ./data:/app/storage tracefinity
 
-FROM node:20-slim AS frontend-build
+# next build segfaults under QEMU when cross-building, so build natively; the
+# .next output is arch-independent.
+FROM --platform=$BUILDPLATFORM node:20-slim AS frontend-build
 
 RUN corepack enable pnpm
 
@@ -15,6 +17,16 @@ COPY frontend/ ./
 ENV NEXT_PUBLIC_API_URL=
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
+
+# runtime node_modules carry native binaries (sharp, swc), so install them for
+# the target platform
+FROM node:20-slim AS frontend-deps
+
+RUN corepack enable pnpm
+
+WORKDIR /frontend
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
 
 FROM python:3.12-slim
 
@@ -46,7 +58,7 @@ COPY backend/ ./backend/
 COPY --from=frontend-build /frontend/.next ./.next
 COPY --from=frontend-build /frontend/public ./public
 COPY --from=frontend-build /frontend/package.json ./
-COPY --from=frontend-build /frontend/node_modules ./node_modules
+COPY --from=frontend-deps /frontend/node_modules ./node_modules
 
 # storage directory
 RUN mkdir -p /app/storage/uploads /app/storage/processed /app/storage/outputs
