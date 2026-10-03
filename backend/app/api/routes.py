@@ -667,9 +667,9 @@ async def set_corners(request: Request, session_id: str, req: CornersRequest, us
     try:
         with Image.open(_abs(session.original_image_path)) as im:
             img_w, img_h = im.size
-        photo_warnings = check_photo(
-            corners, img_w, img_h, req.paper_size, session.focal_length_35mm
-        )
+        # no focal length skips the camera-height check
+        focal_length = session.focal_length_35mm if settings.camera_height_warning else None
+        photo_warnings = check_photo(corners, img_w, img_h, req.paper_size, focal_length)
     except Exception:
         logger.exception("photo checks skipped")
 

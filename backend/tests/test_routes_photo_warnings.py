@@ -106,6 +106,7 @@ def _seed_session_with_upload(tmp_path, monkeypatch, f35):
 
 
 def test_corners_returns_and_persists_warnings(tmp_path, monkeypatch):
+    monkeypatch.setattr(routes.settings, "camera_height_warning", True)
     client, sessions = _seed_session_with_upload(tmp_path, monkeypatch, f35=26.0)
     corners = corners_for_height(250.0, 26.0, 800, 600)
 
@@ -124,6 +125,21 @@ def test_corners_returns_and_persists_warnings(tmp_path, monkeypatch):
 
 def test_corners_without_focal_length_is_graceful(tmp_path, monkeypatch):
     client, sessions = _seed_session_with_upload(tmp_path, monkeypatch, f35=None)
+    corners = corners_for_height(250.0, 26.0, 800, 600)
+
+    resp = client.post(
+        "/api/sessions/s1/corners",
+        json={
+            "corners": [{"x": x, "y": y} for x, y in corners],
+            "paper_size": "a4",
+        },
+    )
+    assert resp.status_code == 200
+    assert "camera_too_close" not in [w["code"] for w in resp.json()["warnings"]]
+
+
+def test_corners_skips_camera_warning_by_default(tmp_path, monkeypatch):
+    client, _ = _seed_session_with_upload(tmp_path, monkeypatch, f35=26.0)
     corners = corners_for_height(250.0, 26.0, 800, 600)
 
     resp = client.post(
