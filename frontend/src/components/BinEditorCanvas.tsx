@@ -1,12 +1,13 @@
 'use client'
 
-import { RefObject } from 'react'
+import { RefObject, useMemo } from 'react'
 import type { PlacedTool, TextLabel } from '@/types'
 import { polygonPathData, smoothPathData, simplifyPolygon, smoothEpsilon } from '@/lib/svg'
 import { GRID_UNIT, DISPLAY_SCALE } from '@/lib/constants'
 import { CutoutOverlay } from '@/components/CutoutOverlay'
+import { MeasureLayer } from '@/components/MeasureLayer'
 
-type Tool = 'select' | 'text'
+type Tool = 'select' | 'text' | 'measure'
 
 type Selection =
   | { type: 'tool'; toolId: string }
@@ -106,6 +107,20 @@ export function BinEditorCanvas({
   onPendingLabelKeyDown,
   onPendingLabelBlur,
 }: Props) {
+  // tool outlines plus the bin edge and wall inset, so clearances can be measured
+  const measureRings = useMemo(() => {
+    const rect = (inset: number) => [
+      { x: inset, y: inset },
+      { x: displayWidth - inset, y: inset },
+      { x: displayWidth - inset, y: displayHeight - inset },
+      { x: inset, y: displayHeight - inset },
+    ]
+    const toolRings = placedTools.flatMap(t =>
+      [t.points, ...(t.interior_rings ?? [])].map(r => r.map(p => ({ x: p.x * DISPLAY_SCALE, y: p.y * DISPLAY_SCALE })))
+    )
+    return [...toolRings, rect(0), rect((wallThickness + 0.25) * DISPLAY_SCALE)]
+  }, [placedTools, displayWidth, displayHeight, wallThickness])
+
   return (
     <>
       {/* SVG area */}
@@ -420,6 +435,14 @@ export function BinEditorCanvas({
                 style={{ fontSize: '48px', padding: '12px 20px', height: '100%', boxSizing: 'border-box', textAlign: 'center' }}
               />
             </foreignObject>
+          )}
+
+          {activeTool === 'measure' && (
+            <MeasureLayer
+              x={-10} y={-10} width={displayWidth + 70} height={displayHeight + 30}
+              snapRings={measureRings}
+              mmPerUnit={1 / DISPLAY_SCALE}
+            />
           )}
         </svg>
       </div>

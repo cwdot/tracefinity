@@ -63,6 +63,7 @@ export default function TracePage() {
   const [paperSize, setPaperSize] = useState<PaperSize>('a4')
   const [imageUrl, setImageUrl] = useState<string>('')
   const [correctedImageUrl, setCorrectedImageUrl] = useState<string>('')
+  const [scaleFactor, setScaleFactor] = useState<number | null>(null)
   const [polygons, setPolygons] = useState<Polygon[]>([])
   const [photoWarnings, setPhotoWarnings] = useState<PhotoWarning[]>([])
   const [warningsDismissed, setWarningsDismissed] = useState(false)
@@ -125,6 +126,7 @@ export default function TracePage() {
         }
         if (s.corrected_image_path) {
           setCorrectedImageUrl(`/storage/${s.corrected_image_path}`)
+          setScaleFactor(s.scale_factor)
         }
         if (s.photo_warnings?.length) {
           setPhotoWarnings(s.photo_warnings)
@@ -172,6 +174,7 @@ export default function TracePage() {
     try {
       const result = await setCorners(sessionId, corners, paperSize)
       setCorrectedImageUrl(result.corrected_image_url)
+      setScaleFactor(result.scale_factor)
       setImageVersion(Date.now())
       setPhotoWarnings(result.warnings ?? [])
       setWarningsDismissed(false)
@@ -751,6 +754,7 @@ export default function TracePage() {
             onIncludedChange={step === 'edit' ? setIncludedPolygons : undefined}
             hovered={step === 'edit' ? hoveredPolygon : undefined}
             onHoveredChange={step === 'edit' ? setHoveredPolygon : undefined}
+            mmPerPx={scaleFactor}
           />
         )}
       </div>

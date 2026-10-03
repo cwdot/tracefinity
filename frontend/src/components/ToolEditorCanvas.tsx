@@ -1,12 +1,13 @@
 'use client'
 
-import { RefObject, useState } from 'react'
+import { RefObject, useMemo, useState } from 'react'
 import type { Point, FingerHole, ToolImageContext } from '@/types'
 import type { SymmetryAxis } from '@/lib/symmetry'
 import { polygonPathData, smoothPathData } from '@/lib/svg'
 import { DISPLAY_SCALE } from '@/lib/constants'
 import { isRectangularCutout } from '@/lib/cutouts'
 import { CutoutOverlay } from '@/components/CutoutOverlay'
+import { MeasureLayer } from '@/components/MeasureLayer'
 import type { EditMode, Selection } from '@/components/ToolEditorToolbar'
 
 interface Props {
@@ -69,6 +70,10 @@ export function ToolEditorCanvas({
 }: Props) {
   const stopClick = (e: React.MouseEvent) => e.stopPropagation()
   const [hoveredRing, setHoveredRing] = useState<number | null>(null)
+  const measureRings = useMemo(
+    () => [displayPoints, ...(interiorRings ?? [])].map(r => r.map(p => ({ x: p.x * DISPLAY_SCALE, y: p.y * DISPLAY_SCALE }))),
+    [displayPoints, interiorRings]
+  )
   const sourceImage = sourceImageContext && showSourceImage ? (() => {
     const [a, b, c, d, e, f] = sourceImageContext.transform
     const ds = DISPLAY_SCALE
@@ -398,6 +403,14 @@ export function ToolEditorCanvas({
               </g>
             )
           })()}
+
+          {editMode === 'measure' && (
+            <MeasureLayer
+              x={zvbX} y={zvbY} width={zvbW} height={zvbH}
+              snapRings={measureRings}
+              mmPerUnit={1 / DISPLAY_SCALE}
+            />
+          )}
         </svg>
       </div>
     </>

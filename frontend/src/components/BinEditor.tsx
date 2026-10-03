@@ -28,7 +28,7 @@ interface Props {
   onDraggingChange?: (dragging: boolean) => void
 }
 
-type Tool = 'select' | 'text'
+type Tool = 'select' | 'text' | 'measure'
 
 type Selection =
   | { type: 'tool'; toolId: string }
@@ -511,8 +511,10 @@ export function BinEditor({
 
   return (
     <div className="h-full w-full relative">
-      {/* floating toolbar */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 glass-toolbar px-1.5 py-1 flex items-center gap-0.5">
+      {/* floating toolbar: wraps within the pane instead of overflowing under
+          the sidebar; the band is click-through, only the panel catches events */}
+      <div className="absolute top-3 left-3 right-3 z-20 flex justify-center pointer-events-none">
+        <div className="glass-toolbar px-1.5 py-1 flex flex-wrap items-center justify-center gap-0.5 max-w-full pointer-events-auto">
         <BinEditorToolbar
           activeTool={activeTool}
           setActiveTool={setActiveTool}
@@ -538,6 +540,7 @@ export function BinEditor({
           onSetCutoutDepthOverride={setCutoutDepthOverride}
           onSetHoleDepthOverride={setHoleDepthOverride}
         />
+        </div>
       </div>
       <BinEditorCanvas
         svgRef={svgRef}

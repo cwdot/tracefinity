@@ -49,6 +49,10 @@ Masks should be black (tools) on white (background), with sharp edges and no gra
 
 After tracing, mask previews are shown for each detected tool. Use these to check quality before selecting which tools to keep.
 
+## Measuring before saving
+
+On the edit step, the ruler button measures between two points on the photo in mm, using the scale from the paper. Use it to check a traced outline against the real tool before saving. Points snap to outlines; hold Alt to place freely. Esc clears.
+
 ## When tracing goes wrong
 
 The AI handles most tool shapes well, but may struggle with:

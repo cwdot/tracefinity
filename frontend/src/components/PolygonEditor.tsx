@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import type { Point, Polygon } from '@/types'
-import { Undo2, Redo2, Trash2, Plus, Minus, Move } from 'lucide-react'
+import { Undo2, Redo2, Trash2, Plus, Minus, Move, Ruler } from 'lucide-react'
 import { polygonPathData } from '@/lib/svg'
 import { useHistory } from '@/hooks/useHistory'
 import { ZOOM_FACTOR } from '@/lib/constants'
 import { clampZoom, zoomedViewBox, viewBoxPoint, zoomAtCursor } from '@/lib/viewbox'
+import { MeasureLayer } from '@/components/MeasureLayer'
 
 interface Props {
   imageUrl: string
@@ -17,11 +18,13 @@ interface Props {
   onIncludedChange?: (ids: Set<string>) => void
   hovered?: string | null
   onHoveredChange?: (id: string | null) => void
+  // mm per image px; enables the measure tool when set
+  mmPerPx?: number | null
 }
 // base sizes for SVG UI elements, designed for ~800px viewBox width
 const BASE_VIEW_WIDTH = 800
 
-type EditMode = 'select' | 'vertex' | 'add-vertex' | 'delete-vertex'
+type EditMode = 'select' | 'vertex' | 'add-vertex' | 'delete-vertex' | 'measure'
 type DragState =
   | { type: 'vertex'; polyId: string; pointIdx: number }
   | { type: 'pan'; startClientX: number; startClientY: number; origPanX: number; origPanY: number; svgScale: number }
@@ -36,6 +39,7 @@ export function PolygonEditor({
   onIncludedChange,
   hovered,
   onHoveredChange,
+  mmPerPx,
 }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -66,6 +70,11 @@ export function PolygonEditor({
 
   const [editMode, setEditMode] = useState<EditMode>('select')
   const [dragging, setDragging] = useState<DragState>(null)
+
+  const measureRings = useMemo(
+    () => polygons.flatMap(p => [p.points, ...(p.interior_rings ?? [])]),
+    [polygons]
+  )
 
   const { set: pushHistory, undo: handleUndo, redo: handleRedo, canUndo, canRedo } = useHistory<Polygon[]>(
     polygons,
@@ -434,6 +443,19 @@ export function PolygonEditor({
             >
               <Minus className="w-5 h-5" />
             </button>
+            {mmPerPx && (
+              <button
+                onClick={() => handleModeChange('measure')}
+                className={`p-2 rounded transition-colors cursor-pointer ${
+                  editMode === 'measure'
+                    ? 'bg-accent-muted text-accent'
+                    : 'hover:bg-border text-text-secondary'
+                }`}
+                title="Measure distance"
+              >
+                <Ruler className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           <div className="h-6 w-px bg-border-subtle" />
@@ -462,6 +484,7 @@ export function PolygonEditor({
             {(editMode === 'select' || editMode === 'vertex') && activeId && 'Drag vertices to adjust the outline'}
             {editMode === 'add-vertex' && 'Click on an edge to add a vertex'}
             {editMode === 'delete-vertex' && 'Click a vertex to remove it'}
+            {editMode === 'measure' && 'Click two points to measure. Snaps to outlines; hold Alt to place freely. Esc clears.'}
           </span>
 
           {activeId && (
@@ -601,6 +624,14 @@ export function PolygonEditor({
               </g>
             )
           })}
+
+          {editable && editMode === 'measure' && mmPerPx && (
+            <MeasureLayer
+              x={vb.x} y={vb.y} width={vb.w} height={vb.h}
+              snapRings={measureRings}
+              mmPerUnit={mmPerPx}
+            />
+          )}
         </svg>
 
         {/* zoom controls */}

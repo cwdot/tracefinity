@@ -40,6 +40,10 @@ When a label is selected, the toolbar shows:
 
 Labels can be dragged to reposition and have a rotation handle.
 
+## Measure
+
+Pick **Measure** and click two points to get the distance in mm, for example tool-to-wall clearance. Points snap to tool outlines, the bin edge and the wall inset; hold Alt to place a point freely. Esc clears.
+
 ## Auto-size grid
 
 Enabled by default. The grid automatically expands or contracts to fit all placed tools with clearance. Tools are recentred when the grid changes. Turn it off in the sidebar to set grid dimensions manually.

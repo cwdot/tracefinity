@@ -33,6 +33,7 @@ Reference for AI agents. Check here before suggesting new features or claiming s
 - Source image overlay with opacity control
 - Zoom/pan (spacebar to pan)
 - SVG export of tool outline
+- Measure tool: click two points for the distance in mm, snapping to the outline (Alt to place freely, Esc clears). Also on the trace edit step (photo px converted via `scale_factor`) and in the bin editor (snaps to bin edge and wall inset too)
 
 ## Cutouts (Finger Holes and Pockets)
 

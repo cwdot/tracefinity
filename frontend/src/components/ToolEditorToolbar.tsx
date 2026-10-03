@@ -1,13 +1,13 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { MousePointer2, Plus, Minus, Undo2, Redo2, Trash2, Circle, Disc, Square, RectangleHorizontal, Fingerprint, Magnet, RotateCw, RotateCcw, FlipHorizontal2, FlipVertical2, ChevronDown, PaintBucket, Locate, Columns2, Rows2, ArrowLeftRight, Waypoints } from 'lucide-react'
+import { MousePointer2, Plus, Minus, Undo2, Redo2, Trash2, Circle, Disc, Square, RectangleHorizontal, Fingerprint, Magnet, RotateCw, RotateCcw, FlipHorizontal2, FlipVertical2, ChevronDown, PaintBucket, Locate, Columns2, Rows2, ArrowLeftRight, Waypoints, Ruler } from 'lucide-react'
 import type { AxisOrientation, KeepSide } from '@/lib/symmetry'
 import type { FingerHole } from '@/types'
 import { SNAP_GRID_MIN, SNAP_GRID_MAX } from '@/lib/constants'
 import { NumericInput } from '@/components/NumericInput'
 
-export type EditMode = 'select' | 'add-vertex' | 'delete-vertex' | 'finger-hole' | 'circle' | 'cylinder' | 'square' | 'rectangle' | 'filleted_rectangle' | 'fill-ring'
+export type EditMode = 'select' | 'add-vertex' | 'delete-vertex' | 'finger-hole' | 'circle' | 'cylinder' | 'square' | 'rectangle' | 'filleted_rectangle' | 'fill-ring' | 'measure'
 
 export type Selection =
   | { type: 'vertex'; pointIdx: number }
@@ -158,6 +158,16 @@ export function ToolEditorToolbar({
               Fill in
             </button>
           )}
+          <button
+            onClick={() => setEditMode('measure')}
+            className={`px-2.5 py-1 rounded-[7px] text-[11px] font-medium flex items-center gap-1.5 transition-colors ${
+              editMode === 'measure' ? 'bg-accent-muted text-accent' : 'hover:bg-border/50 text-text-secondary'
+            }`}
+            title="Measure distance: click two points. Snaps to the outline; hold Alt to place freely. Esc clears."
+          >
+            <Ruler className="w-4 h-4" />
+            Measure
+          </button>
         </div>
 
         <div className="h-4 w-px bg-border-subtle mx-0.5" />

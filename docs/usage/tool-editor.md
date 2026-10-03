@@ -56,6 +56,10 @@ used for bins and SVG exports. This preference is saved with the tool.
 
 Toggle the Snap button to snap vertices to a 5mm grid. Off by default so outline corrections keep their traced precision. Grid lines are drawn at 10mm intervals for reference.
 
+## Measure
+
+Pick **Measure** and click two points to get the distance in mm. Points snap to the nearest outline vertex or edge; hold Alt to place a point freely. Add as many measurements as you need to check against a ruler or calipers. Esc clears them. Measurements are not saved.
+
 ## Undo / Redo
 
 Ctrl+Z to undo, Ctrl+Shift+Z to redo. Up to 50 steps of history.

@@ -42,6 +42,46 @@ function firstVertex(d: string): { x: number; y: number } {
   return { x: Number(m[1]), y: Number(m[2]) }
 }
 
+// two visible, unobstructed vertices of the svg's first outline (in svg user units),
+// as far apart as possible
+async function outlinePair(page: Page, svgSelector: string, pathSelector: string) {
+  return page.locator(svgSelector).evaluate((svg, sel) => {
+    const d = svg.querySelector(sel)!.getAttribute('d')!.split('Z')[0]
+    const m = (svg as SVGSVGElement).getScreenCTM()!
+    const r = svg.getBoundingClientRect()
+    const pts = [...d.matchAll(/[ML]\s*([\d.eE+-]+)[ ,]\s*([\d.eE+-]+)/g)]
+      .map(v => ({ x: Number(v[1]), y: Number(v[2]) }))
+      .filter(p => {
+        const c = new DOMPoint(p.x, p.y).matrixTransform(m)
+        const inView = c.x > Math.max(r.left, 0) + 5 && c.x < Math.min(r.right, innerWidth) - 5
+          && c.y > Math.max(r.top, 0) + 5 && c.y < Math.min(r.bottom, innerHeight) - 5
+        // skip vertices hidden under floating panels
+        return inView && svg.contains(document.elementFromPoint(c.x, c.y))
+      })
+    const a = pts[0]
+    const b = pts.reduce((best, p) => Math.hypot(p.x - a.x, p.y - a.y) > Math.hypot(best.x - a.x, best.y - a.y) ? p : best)
+    return { a, b, dist: Math.hypot(b.x - a.x, b.y - a.y) }
+  }, pathSelector)
+}
+
+// click two points given in svg user units with the measure tool active,
+// returning the label of the newest measurement
+async function measure(page: Page, svgSelector: string, a: { x: number; y: number }, b: { x: number; y: number }) {
+  const toClient = (p: { x: number; y: number }) => page.locator(svgSelector).evaluate((svg, pt) => {
+    const m = (svg as SVGSVGElement).getScreenCTM()!
+    const c = new DOMPoint(pt.x, pt.y).matrixTransform(m)
+    return { x: c.x, y: c.y }
+  }, p)
+  const ca = await toClient(a)
+  const cb = await toClient(b)
+  const labels = page.locator(`${svgSelector} text`, { hasText: / mm$/ })
+  const before = await labels.count()
+  await page.mouse.click(ca.x, ca.y)
+  await page.mouse.click(cb.x, cb.y)
+  await expect(labels).toHaveCount(before + 1)
+  return labels.last().textContent()
+}
+
 test.describe.serial('happy path', () => {
   let page: Page
 
@@ -107,6 +147,24 @@ test.describe.serial('happy path', () => {
     await expect(saveBtn).toBeEnabled()
   })
 
+  test('measure on the trace page reports mm', async () => {
+    const res = await page.request.get(`/api/sessions/${sessionId}`)
+    const { scale_factor } = await res.json()
+    expect(scale_factor).toBeGreaterThan(0)
+
+    await page.getByTitle('Measure distance').click()
+    const svg = 'svg:has(image[aria-label="Corrected"])'
+    const { a, b, dist } = await outlinePair(page, svg, 'path[d]')
+    expect(dist).toBeGreaterThan(0)
+
+    const label = await measure(page, svg, a, b)
+    expect(label).toBe(`${(dist * scale_factor).toFixed(1)} mm`)
+
+    await page.keyboard.press('Escape')
+    await expect(page.locator(`${svg} text`, { hasText: / mm$/ })).toHaveCount(0)
+    await page.getByTitle('Move vertices').click()
+  })
+
   test('save to library', async () => {
     const saveBtn = page.getByRole('button', { name: /^Save \d+ tools?$/ })
     await saveBtn.click()
@@ -131,6 +189,20 @@ test.describe.serial('happy path', () => {
     await expect(svgPath.first()).toBeVisible({ timeout: 5_000 })
 
     await expect(page.getByText(/\d+ vertices/)).toBeVisible()
+  })
+
+  test('measure in the tool editor reports mm', async () => {
+    await page.getByRole('button', { name: 'Measure' }).click()
+    const svg = 'svg[preserveAspectRatio="xMidYMid meet"]'
+    const { a, b, dist } = await outlinePair(page, svg, 'path[fill-rule="evenodd"]')
+    expect(dist).toBeGreaterThan(0)
+
+    // display units are mm * DISPLAY_SCALE (8)
+    const label = await measure(page, svg, a, b)
+    expect(label).toBe(`${(dist / 8).toFixed(1)} mm`)
+
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Select', exact: true }).click()
   })
 
   test('toggle smooth', async () => {
@@ -320,6 +392,21 @@ test.describe.serial('happy path', () => {
     })
 
     await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible({ timeout: 5_000 })
+  })
+
+  test('measure the bin width in the bin editor', async () => {
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Measure' }).click()
+    const svg = '[data-testid="bin-canvas"]'
+    const viewBox = await page.locator(svg).getAttribute('viewBox')
+    // viewBox is "-10 -10 displayWidth+70 displayHeight+30"
+    const displayWidth = Number(viewBox!.split(' ')[2]) - 70
+
+    const label = await measure(page, svg, { x: 0, y: 0 }, { x: displayWidth, y: 0 })
+    expect(label).toBe(`${(displayWidth / 8).toFixed(1)} mm`)
+
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Select', exact: true }).click()
   })
 
   test('add text label', async () => {
